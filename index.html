@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Response Command Center</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson@3"></script>
+    <script src="https://unpkg.com/d3-simple-slider"></script>
+</head>
+<body>
+
+    <div class="app-layout">
+        
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>🚨 Risk Command</h2>
+                <small>Multi-Select Enabled</small>
+            </div>
+
+            <div id="filter-status" class="status-card hidden">
+                <strong>Current Focus:</strong>
+                <span id="active-country-count">Global</span>
+                <button onclick="resetAll()" class="mini-btn">✕ Clear All</button>
+            </div>
+
+            <div class="control-group">
+                <label>🌍 Countries (Multi-select)</label>
+                <div id="country-list" class="checkbox-list">
+                    </div>
+            </div>
+
+            <div class="control-group">
+                <label>⚠️ Disaster Types</label>
+                <div id="type-list" class="checkbox-list" style="max-height: 80px;">
+                    </div>
+            </div>
+
+            <div class="control-group">
+                <label>📅 Time Range: <span id="yearLabel" style="color:#ffb74d; font-weight:bold;">2018-2024</span></label>
+                <div id="slider-range"></div>
+            </div>
+
+            <div class="kpi-board">
+                <div class="kpi-item">
+                    <span id="kpi-events">0</span>
+                    <label>Events</label>
+                </div>
+                <div class="kpi-item alert">
+                    <span id="kpi-loss">$0</span>
+                    <label>Total Loss</label>
+                </div>
+            </div>
+
+            <button id="resetBtn">Reset All Filters</button>
+        </aside>
+
+        <main class="dashboard-content">
+            
+            <section class="card" id="step1">
+                <div class="card-header">
+                    <div class="header-left">
+                        <span class="badge">Step 1: Locate</span>
+                        <h3>Global Risk Map</h3>
+                    </div>
+                    <div class="header-right">
+                        <small>Selecting multiple countries highlights them simultaneously.</small>
+                    </div>
+                </div>
+                <div id="chart-map" class="chart-canvas"></div>
+                <div class="legend-container">
+                    <div class="legend-box" style="background:#fee5d9"></div> Low
+                    <div class="legend-box" style="background:#fc9272"></div>
+                    <div class="legend-box" style="background:#fb6a4a"></div>
+                    <div class="legend-box" style="background:#de2d26"></div>
+                    <div class="legend-box" style="background:#a50f15"></div> High
+                </div>
+            </section>
+
+            <div class="row-split">
+                <section class="card" id="step2">
+                    <div class="card-header">
+                        <span class="badge">Step 2: Prioritize</span>
+                        <h3>Performance Matrix</h3>
+                    </div>
+                    <div class="scatter-layout">
+                        <div id="chart-scatter" class="chart-canvas small"></div>
+                        <div class="info-panel">
+                            <h4>Event Details</h4>
+                            <div id="scatter-placeholder" class="placeholder-text">Hover over a point...</div>
+                            <div id="scatter-details" class="hidden">
+                                <div class="detail-row"><span>Country:</span> <strong id="d-country"></strong></div>
+                                <div class="detail-row"><span>Year:</span> <strong id="d-year"></strong></div>
+                                <div class="detail-row"><span>Type:</span> <strong id="d-type"></strong></div>
+                                <div class="detail-row"><span>Sev / Eff:</span> <strong id="d-sev-eff" style="color:#d32f2f"></strong></div>
+                                <div class="detail-row"><span>Loss:</span> <strong id="d-loss"></strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card" id="step3">
+                    <div class="card-header">
+                        <span class="badge">Step 3: Analyze</span>
+                        <h3 id="analyze-title">Economic Loss Comparison</h3>
+                    </div>
+                    <div id="chart-bar" class="chart-canvas small"></div>
+                </section>
+            </div>
+
+            <section class="card" id="step4">
+                <div class="card-header">
+                    <span class="badge">Step 4: Monitor</span>
+                    <h3>Response Time Trends</h3>
+                </div>
+                <div id="chart-line" class="chart-canvas"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <div id="tooltip" class="tooltip hidden"></div>
+
+    <script>
+        // --- CONFIG ---
+        const priorityThreshold = { severity: 4.5, efficiency: 90 }; 
+        const nameMapping = {
+            "United States": "United States of America",
+            "China": "China", "India": "India", "Indonesia": "Indonesia", "Philippines": "Philippines",
+            "Japan": "Japan", "Mexico": "Mexico", "Brazil": "Brazil", "Turkey": "Turkey", "Chile": "Chile",
+            "Canada": "Canada", "Australia": "Australia", "France": "France", "Germany": "Germany",
+            "Italy": "Italy", "Spain": "Spain", "Greece": "Greece", "Nigeria": "Nigeria",
+            "Bangladesh": "Bangladesh", "South Africa": "South Africa"
+        };
+
+        let rawData = [];
+        let worldData = null;
+        let rangeYears = [2018, 2024];
+
+        // --- INIT ---
+        Promise.all([
+            d3.csv("data.csv"),
+            d3.json("https://unpkg.com/world-atlas@2.0.2/countries-110m.json")
+        ]).then(([csv, world]) => {
+            
+            const parser = d3.timeParse("%Y-%m-%d");
+            rawData = csv.map(d => ({
+                date: parser(d.date),
+                year: parser(d.date) ? parser(d.date).getFullYear() : 0,
+                country: d.country,
+                mapName: nameMapping[d.country] || d.country,
+                type: d.disaster_type,
+                severity: +d.severity_index,
+                efficiency: +d.response_efficiency_score,
+                time: +d.response_time_hours,
+                loss: +d.economic_loss_usd,
+                lat: +d.latitude,
+                lng: +d.longitude
+            })).filter(d => d.date && !isNaN(d.lat));
+
+            worldData = world;
+
+            // Initialize Checkbox Lists (Multi-select)
+            initCheckboxList("#country-list", [...new Set(rawData.map(d => d.country))].sort());
+            initCheckboxList("#type-list", [...new Set(rawData.map(d => d.type))].sort());
+
+            // Initialize Slider
+            initSlider();
+
+            // Initial Render
+            updateDashboard();
+
+            // Reset Button
+            d3.select("#resetBtn").on("click", resetAll);
+            window.addEventListener("resize", () => { setTimeout(updateDashboard, 300); });
+
+        });
+
+        // --- HELPER: Create Checkboxes ---
+        function initCheckboxList(containerId, items) {
+            const container = d3.select(containerId);
+            container.html(""); // Clear
+
+            // Add "Select All" option logic handled by default (if none checked = all)
+            
+            items.forEach(item => {
+                const label = container.append("label").attr("class", "checkbox-item");
+                label.append("input")
+                    .attr("type", "checkbox")
+                    .attr("value", item)
+                    .attr("checked", false) // Default unchecked means "All" logically
+                    .on("change", updateDashboard); // Trigger update on change
+                
+                label.append("span").text(item);
+            });
+        }
+
+        // --- HELPER: Get Selected Values ---
+        function getSelectedValues(containerId) {
+            const checked = [];
+            d3.selectAll(`${containerId} input[type=checkbox]:checked`).each(function() {
+                checked.push(this.value);
+            });
+            // If nothing checked, return empty array (implies All)
+            return checked;
+        }
+
+        // --- HELPER: Slider ---
+        function initSlider() {
+            const sliderRange = d3
+                .sliderBottom()
+                .min(2018)
+                .max(2024)
+                .width(200)
+                .tickFormat(d3.format('d'))
+                .ticks(5)
+                .step(1)
+                .default([2018, 2024])
+                .fill('#2196f3')
+                .on('onchange', val => {
+                    rangeYears = val;
+                    d3.select('#yearLabel').text(val.join('-'));
+                    updateDashboard();
+                });
+
+            const gRange = d3
+                .select('div#slider-range')
+                .append('svg')
+                .attr('width', 240)
+                .attr('height', 50)
+                .append('g')
+                .attr('transform', 'translate(15,15)');
+
+            gRange.call(sliderRange);
+        }
+
+        function resetAll() {
+            // Uncheck all boxes
+            d3.selectAll("input[type=checkbox]").property("checked", false);
+            // Reset Slider logic is complex to UI reset, but we can reset filter logic
+            // Ideally re-init slider, but for prototype we keep slider as is or reload
+            updateDashboard();
+        }
+
+        // --- CORE UPDATE LOGIC ---
+        function updateDashboard() {
+            const selCountries = getSelectedValues("#country-list");
+            const selTypes = getSelectedValues("#type-list");
+
+            // UI Status Update
+            const statusText = selCountries.length > 0 ? `${selCountries.length} Selected` : "Global View";
+            d3.select("#active-country-count").text(statusText);
+            d3.select("#filter-status").classed("hidden", selCountries.length === 0);
+
+            // Filter Data
+            const filtered = rawData.filter(d => {
+                const countryMatch = selCountries.length === 0 || selCountries.includes(d.country);
+                const typeMatch = selTypes.length === 0 || selTypes.includes(d.type);
+                const yearMatch = d.year >= rangeYears[0] && d.year <= rangeYears[1];
+                return countryMatch && typeMatch && yearMatch;
+            });
+
+            // KPIs
+            d3.select("#kpi-events").text(filtered.length);
+            const totalLoss = d3.sum(filtered, d => d.loss);
+            d3.select("#kpi-loss").text(d3.format("$.2s")(totalLoss).replace("G","B"));
+
+            // Clear Charts
+            d3.selectAll(".chart-canvas").html("");
+
+            if(filtered.length === 0) {
+                d3.selectAll(".chart-canvas").append("div").attr("class", "no-data").text("No Data Found");
+                return;
+            }
+
+            renderChoroplethMap(filtered, selCountries);
+            renderScatter(filtered);
+            renderHorizontalBar(filtered, selCountries);
+            renderTrendLine(filtered);
+        }
+
+        // --- STEP 1: MAP (Quantile + Multi Highlight) ---
+        function renderChoroplethMap(data, selectedCountries) {
+            const container = document.getElementById("chart-map");
+            const w = container.clientWidth;
+            const h = 400;
+
+            const svg = d3.select("#chart-map").append("svg")
+                .attr("width", w).attr("height", h)
+                .style("background", "#1e293b");
+
+            const projection = d3.geoMercator().translate([w/2, h/1.5]);
+            const path = d3.geoPath().projection(projection);
+            const countries = topojson.feature(worldData, worldData.objects.countries).features;
+
+            const counts = d3.rollup(data, v => v.length, d => d.mapName);
+            const values = Array.from(counts.values());
+            
+            // Quantile Scale for better contrast
+            const color = d3.scaleQuantile()
+                .domain(values.length > 0 ? values : [0])
+                .range(['#fee5d9','#fc9272','#fb6a4a','#de2d26','#a50f15']); 
+
+            const g = svg.append("g");
+            
+            g.selectAll("path")
+                .data(countries)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("fill", d => {
+                    const val = counts.get(d.properties.name);
+                    return val ? color(val) : "#37474f"; 
+                })
+                .attr("stroke", d => {
+                    // Highlight if in selection
+                    const csvName = Object.keys(nameMapping).find(key => nameMapping[key] === d.properties.name) || d.properties.name;
+                    return (selectedCountries.length > 0 && selectedCountries.includes(csvName)) ? "#00e5ff" : "#546e7a";
+                })
+                .attr("stroke-width", d => {
+                    const csvName = Object.keys(nameMapping).find(key => nameMapping[key] === d.properties.name) || d.properties.name;
+                    return (selectedCountries.length > 0 && selectedCountries.includes(csvName)) ? 2 : 0.5;
+                })
+                .on("mouseover", function(e, d) {
+                    const val = counts.get(d.properties.name) || 0;
+                    d3.select(this).style("opacity", 0.7);
+                    showTooltip(e, `<b>${d.properties.name}</b><br>Events: ${val}`);
+                })
+                .on("mouseout", function() {
+                    d3.select(this).style("opacity", 1);
+                    hideTooltip();
+                })
+                .on("click", (e, d) => {
+                    // Click map to select (Simple Toggle logic difficult with multi-select list, 
+                    // so we make map click act as "Focus Single Country")
+                    e.stopPropagation();
+                    const csvName = Object.keys(nameMapping).find(key => nameMapping[key] === d.properties.name) || d.properties.name;
+                    
+                    // Reset all checkboxes and check only this one
+                    d3.selectAll("#country-list input").property("checked", false);
+                    d3.selectAll(`#country-list input[value='${csvName}']`).property("checked", true);
+                    updateDashboard();
+                });
+
+            // Zoom Logic (Fit bounds of all selected countries)
+            // If 1 or more countries selected, zoom to fit them all
+            if (selectedCountries.length > 0) {
+                const selectedFeatures = countries.filter(c => {
+                    const csvName = Object.keys(nameMapping).find(key => nameMapping[key] === c.properties.name) || c.properties.name;
+                    return selectedCountries.includes(csvName);
+                });
+
+                if (selectedFeatures.length > 0) {
+                    // Calculate bounds for multiple features is complex in plain D3 geo
+                    // Simplified: Zoom to the first one if multiple, or center
+                    // Better: If multiple, stick to global or slightly zoomed. 
+                    // If 1, strict zoom.
+                    if(selectedFeatures.length === 1) {
+                         const bounds = path.bounds(selectedFeatures[0]);
+                         const dx = bounds[1][0] - bounds[0][0];
+                         const dy = bounds[1][1] - bounds[0][1];
+                         const x = (bounds[0][0] + bounds[1][0]) / 2;
+                         const y = (bounds[0][1] + bounds[1][1]) / 2;
+                         const scale = Math.max(1, Math.min(8, 0.9 / Math.max(dx / w, dy / h)));
+                         const translate = [w / 2 - scale * x, h / 2 - scale * y];
+                         g.transition().duration(750).attr("transform", `translate(${translate})scale(${scale})`);
+                    } else {
+                        // Reset zoom for multiple (hard to calculate centroid for scattered countries)
+                        g.transition().duration(750).attr("transform", "");
+                    }
+                }
+            } else {
+                g.transition().duration(750).attr("transform", "");
+            }
+        }
+
+        // --- STEP 2: SCATTER (Interactive Info Panel) ---
+        function renderScatter(data) {
+            const container = document.getElementById("chart-scatter");
+            const w = container.clientWidth;
+            const h = 250;
+            const m = {top: 20, right: 20, bottom: 40, left: 50};
+
+            const svg = d3.select("#chart-scatter").append("svg")
+                .attr("width", w).attr("height", h)
+                .append("g").attr("transform", `translate(${m.left},${m.top})`);
+
+            const width = w - m.left - m.right;
+            const height = h - m.top - m.bottom;
+
+            const x = d3.scaleLinear().domain([0, 10]).range([0, width]);
+            const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+
+            // Zone
+            svg.append("rect")
+                .attr("x", x(priorityThreshold.severity))
+                .attr("y", y(priorityThreshold.efficiency))
+                .attr("width", width - x(priorityThreshold.severity))
+                .attr("height", y(0) - y(priorityThreshold.efficiency))
+                .attr("fill", "rgba(211, 47, 47, 0.08)")
+                .attr("stroke", "#d32f2f").attr("stroke-dasharray", "4");
+
+            svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
+            svg.append("g").call(d3.axisLeft(y));
+
+            svg.append("text").attr("x", width/2).attr("y", height+30).text("Severity").style("font-size","10px");
+            svg.append("text").attr("transform","rotate(-90)").attr("y", -35).attr("x", -height/2).text("Efficiency").style("font-size","10px");
+
+            svg.selectAll("circle")
+                .data(data)
+                .enter().append("circle")
+                .attr("cx", d => x(d.severity))
+                .attr("cy", d => y(d.efficiency))
+                .attr("r", 5)
+                .attr("fill", d => 
+                    (d.severity >= priorityThreshold.severity && d.efficiency <= priorityThreshold.efficiency) 
+                    ? "#d32f2f" : "#90a4ae"
+                )
+                .attr("opacity", 0.6)
+                .attr("stroke", "white")
+                .style("cursor", "pointer")
+                .on("mouseover", (e, d) => {
+                    d3.select(e.target).attr("r", 8).attr("stroke", "black").attr("opacity", 1);
+                    d3.select("#scatter-placeholder").style("display", "none");
+                    d3.select("#scatter-details").classed("hidden", false);
+                    d3.select("#d-country").text(d.country);
+                    d3.select("#d-year").text(d.year);
+                    d3.select("#d-type").text(d.type);
+                    d3.select("#d-sev-eff").text(`${d.severity} / ${d.efficiency}`);
+                    d3.select("#d-loss").text(d3.format("$.2s")(d.loss));
+                })
+                .on("mouseout", (e) => {
+                    d3.select(e.target).attr("r", 5).attr("stroke", "white").attr("opacity", 0.6);
+                })
+                .on("click", (e, d) => {
+                    // Click -> Check specific country
+                    d3.selectAll("#country-list input").property("checked", false);
+                    d3.selectAll(`#country-list input[value='${d.country}']`).property("checked", true);
+                    updateDashboard();
+                    document.getElementById("step3").scrollIntoView({behavior: "smooth"});
+                });
+        }
+
+        // --- STEP 3: HORIZONTAL BAR (Comparing selection) ---
+        function renderHorizontalBar(data, selectedCountries) {
+            const container = document.getElementById("chart-bar");
+            const w = container.clientWidth;
+            const h = 250;
+            const m = {top: 20, right: 40, bottom: 40, left: 120}; 
+
+            const svg = d3.select("#chart-bar").append("svg")
+                .attr("width", w).attr("height", h)
+                .append("g").attr("transform", `translate(${m.left},${m.top})`);
+
+            const width = w - m.left - m.right;
+            const height = h - m.top - m.bottom;
+
+            let barData = [];
+            
+            // Logic: 
+            // 1. If 0 or >1 countries selected: Compare Countries (Top 5)
+            // 2. If 1 country selected: Compare Types or Years
+            
+            if (selectedCountries.length !== 1) {
+                // Multi or All view
+                d3.select("#analyze-title").text("Total Loss Comparison (Top 5)");
+                const rolled = d3.rollup(data, v => d3.sum(v, d => d.loss), d => d.country);
+                barData = Array.from(rolled, ([k, v]) => ({ key: k, value: v }))
+                    .sort((a, b) => b.value - a.value).slice(0, 5);
+            } else {
+                // Single view
+                const country = selectedCountries[0];
+                d3.select("#analyze-title").text(`Loss by Year: ${country}`);
+                const rolled = d3.rollup(data, v => d3.sum(v, d => d.loss), d => d.year);
+                barData = Array.from(rolled, ([k, v]) => ({ key: k.toString(), value: v }))
+                    .sort((a, b) => a.key - b.key);
+            }
+
+            const y = d3.scaleBand().range([0, height]).padding(0.3)
+                .domain(barData.map(d => d.key));
+            
+            const x = d3.scaleLinear().range([0, width])
+                .domain([0, d3.max(barData, d => d.value) || 100]);
+
+            svg.append("g").call(d3.axisLeft(y));
+            svg.append("g").attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".2s")));
+
+            svg.append("text").attr("x", width/2).attr("y", height + 35)
+                .text("Total Loss (USD)").attr("text-anchor", "middle").style("font-size", "11px");
+
+            svg.selectAll("rect")
+                .data(barData)
+                .enter().append("rect")
+                .attr("y", d => y(d.key))
+                .attr("height", y.bandwidth())
+                .attr("x", 0)
+                .attr("width", d => x(d.value))
+                .attr("fill", "#ffa726")
+                .on("mouseover", (e, d) => showTooltip(e, `Loss: $${d3.format(",")(d.value)}`))
+                .on("mouseout", hideTooltip);
+        }
+
+        // --- STEP 4: LINE CHART ---
+        function renderTrendLine(data) {
+            const container = document.getElementById("chart-line");
+            const w = container.clientWidth;
+            const h = 250;
+            const m = {top:20, right:30, bottom:40, left:60};
+
+            const svg = d3.select("#chart-line").append("svg")
+                .attr("width", w).attr("height", h)
+                .append("g").attr("transform", `translate(${m.left},${m.top})`);
+
+            const width = w - m.left - m.right;
+            const height = h - m.top - m.bottom;
+
+            const rolled = d3.rollup(data, v => d3.mean(v, d => d.time), d => d.year);
+            const lineData = Array.from(rolled, ([year, val]) => ({ year, val })).sort((a, b) => a.year - b.year);
+
+            if(lineData.length < 2) {
+                svg.append("text").attr("x", width/2).attr("y", height/2).text("Not enough data").attr("text-anchor","middle");
+                return;
+            }
+
+            const x = d3.scaleLinear().domain(d3.extent(lineData, d => d.year)).range([0, width]);
+            const y = d3.scaleLinear().domain([0, d3.max(lineData, d => d.val)*1.2]).range([height, 0]);
+
+            svg.append("g").attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+            svg.append("g").call(d3.axisLeft(y));
+
+            svg.append("text").attr("x", width/2).attr("y", height+35).text("Year").attr("text-anchor", "middle").style("font-size", "11px");
+            svg.append("text").attr("transform", "rotate(-90)").attr("y", -35).attr("x", -height/2).text("Avg Time (Hrs)").attr("text-anchor", "middle").style("font-size", "11px");
+
+            const line = d3.line().x(d => x(d.year)).y(d => y(d.val));
+
+            svg.append("path").datum(lineData)
+                .attr("fill", "none").attr("stroke", "#66bb6a").attr("stroke-width", 3).attr("d", line);
+
+            svg.selectAll("circle").data(lineData).enter().append("circle")
+                .attr("cx", d => x(d.year)).attr("cy", d => y(d.val)).attr("r", 5).attr("fill", "#2e7d32")
+                .on("mouseover", (e, d) => showTooltip(e, `Avg: ${d.val.toFixed(1)}h`))
+                .on("mouseout", hideTooltip);
+        }
+
+        const tooltip = d3.select("#tooltip");
+        function showTooltip(e, html) {
+            tooltip.classed("hidden", false).html(html)
+                .style("left", (e.pageX+10)+"px").style("top", (e.pageY-20)+"px");
+        }
+        function hideTooltip() { tooltip.classed("hidden", true); }
+
+    </script>
+</body>
+</html>
