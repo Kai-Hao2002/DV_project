@@ -154,6 +154,7 @@
                 type: d.disaster_type,
                 severity: +d.severity_index,
                 efficiency: +d.response_efficiency_score,
+                casualties: +d.casualties || 0,
                 time: +d.response_time_hours,
                 loss: +d.economic_loss_usd,
                 lat: +d.latitude,
@@ -375,131 +376,336 @@
             }
         }
 
-        // --- STEP 2: SCATTER (Interactive Info Panel) ---
+        // --- STEP 2: SCATTER (With Hover Highlight) ---
         function renderScatter(data) {
             const container = document.getElementById("chart-scatter");
+            d3.select("#chart-scatter").html(""); 
+
             const w = container.clientWidth;
             const h = 250;
             const m = {top: 20, right: 20, bottom: 40, left: 50};
-
-            const svg = d3.select("#chart-scatter").append("svg")
-                .attr("width", w).attr("height", h)
-                .append("g").attr("transform", `translate(${m.left},${m.top})`);
-
             const width = w - m.left - m.right;
             const height = h - m.top - m.bottom;
 
+            // Pre-processing: Top 2000 Events by Loss
+            const topEvents = [...data]
+                .sort((a, b) => b.loss - a.loss)
+                .slice(0, 2000);
+
+            // Wrapper
+            const wrapper = d3.select("#chart-scatter")
+                .style("position", "relative")
+                .style("width", w + "px")
+                .style("height", h + "px");
+
+            // Canvas
+            const canvas = wrapper.append("canvas")
+                .attr("width", width)
+                .attr("height", height)
+                .style("position", "absolute")
+                .style("top", m.top + "px")
+                .style("left", m.left + "px");
+            const context = canvas.node().getContext("2d");
+
+            // SVG (for Axes & Labels)
+            const svg = wrapper.append("svg")
+                .attr("width", w)
+                .attr("height", h)
+                .style("position", "absolute")
+                .style("top", "0px")
+                .style("left", "0px")
+                .style("pointer-events", "none")
+                .append("g").attr("transform", `translate(${m.left},${m.top})`);
+
+            // Scales
             const x = d3.scaleLinear().domain([0, 10]).range([0, width]);
             const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+            
+            // Bubble Size (Loss)
+            const rScale = d3.scaleSqrt()
+                .domain([0, d3.max(topEvents, d => d.loss) || 1e9])
+                .range([3, 18]); 
 
-            // Zone
-            svg.append("rect")
-                .attr("x", x(priorityThreshold.severity))
-                .attr("y", y(priorityThreshold.efficiency))
-                .attr("width", width - x(priorityThreshold.severity))
-                .attr("height", y(0) - y(priorityThreshold.efficiency))
-                .attr("fill", "rgba(211, 47, 47, 0.08)")
-                .attr("stroke", "#d32f2f").attr("stroke-dasharray", "4");
+            // Color (Type)
+            const colorScale = d3.scaleOrdinal()
+                .domain(["Earthquake", "Flood", "Storm", "Wildfire", "Drought", "Volcano"])
+                .range(["#7986cb", "#4fc3f7", "#9ccc65", "#ff8a65", "#ba68c8", "#90a4ae"]);
 
+            // --- Draw Static SVG Elements ---
+            // Threshold Lines
+            svg.append("line")
+                .attr("x1", x(priorityThreshold.severity)).attr("x2", x(priorityThreshold.severity))
+                .attr("y1", 0).attr("y2", height)
+                .attr("stroke", "#cfd8dc").attr("stroke-dasharray", "4");
+
+            svg.append("line")
+                .attr("x1", 0).attr("x2", width)
+                .attr("y1", y(priorityThreshold.efficiency)).attr("y2", y(priorityThreshold.efficiency))
+                .attr("stroke", "#cfd8dc").attr("stroke-dasharray", "4");
+
+            // Axes
             svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
             svg.append("g").call(d3.axisLeft(y));
 
-            svg.append("text").attr("x", width/2).attr("y", height+30).text("Severity").style("font-size","10px");
-            svg.append("text").attr("transform","rotate(-90)").attr("y", -35).attr("x", -height/2).text("Efficiency").style("font-size","10px");
+            // Axis Labels
+            svg.append("text").attr("x", width/2).attr("y", height+30).text("Severity Index").style("font-size","10px").attr("fill", "#666");
+            svg.append("text").attr("transform","rotate(-90)").attr("y", -35).attr("x", -height/2).text("Response Efficiency").style("font-size","10px").attr("fill", "#666");
 
-            svg.selectAll("circle")
-                .data(data)
-                .enter().append("circle")
-                .attr("cx", d => x(d.severity))
-                .attr("cy", d => y(d.efficiency))
-                .attr("r", 5)
-                .attr("fill", d => 
-                    (d.severity >= priorityThreshold.severity && d.efficiency <= priorityThreshold.efficiency) 
-                    ? "#d32f2f" : "#90a4ae"
-                )
-                .attr("opacity", 0.6)
-                .attr("stroke", "white")
-                .style("cursor", "pointer")
-                .on("mouseover", (e, d) => {
-                    d3.select(e.target).attr("r", 8).attr("stroke", "black").attr("opacity", 1);
-                    d3.select("#scatter-placeholder").style("display", "none");
-                    d3.select("#scatter-details").classed("hidden", false);
-                    d3.select("#d-country").text(d.country);
-                    d3.select("#d-year").text(d.year);
-                    d3.select("#d-type").text(d.type);
-                    d3.select("#d-sev-eff").text(`${d.severity} / ${d.efficiency}`);
-                    d3.select("#d-loss").text(d3.format("$.2s")(d.loss));
-                })
-                .on("mouseout", (e) => {
-                    d3.select(e.target).attr("r", 5).attr("stroke", "white").attr("opacity", 0.6);
-                })
-                .on("click", (e, d) => {
-                    // Click -> Check specific country
-                    d3.selectAll("#country-list input").property("checked", false);
-                    d3.selectAll(`#country-list input[value='${d.country}']`).property("checked", true);
-                    updateDashboard();
-                    document.getElementById("step3").scrollIntoView({behavior: "smooth"});
+            // Quadrant Labels
+            svg.append("text").attr("x", width - 10).attr("y", 15).text("Heroes").attr("text-anchor", "end").style("fill", "#cfd8dc").style("font-size", "9px");
+            svg.append("text").attr("x", width - 10).attr("y", height - 10).text("Critical").attr("text-anchor", "end").style("fill", "#ef5350").style("font-weight", "bold").style("font-size", "9px");
+
+            // Data Filter Status
+            svg.append("text")
+                .attr("x", 10)
+                .attr("y", 15)
+                .text(`Showing Top ${topEvents.length} Major Events (by Loss)`)
+                .style("font-size", "10px")
+                .style("fill", "#0288d1")
+                .style("font-weight", "bold");
+
+            // --- Canvas Drawing Function ---
+            function drawCanvas(hoveredDataPoint) {
+                context.clearRect(0, 0, width, height);
+                
+                // Sort: draw large behind small
+                topEvents.sort((a, b) => b.loss - a.loss);
+
+                topEvents.forEach(d => {
+                    const px = x(d.severity);
+                    const py = y(d.efficiency);
+                    const r = rScale(d.loss);
+                    const isCritical = (d.severity >= priorityThreshold.severity && d.efficiency <= priorityThreshold.efficiency);
+                    
+                    const isHovered = hoveredDataPoint && d === hoveredDataPoint;
+
+                    context.beginPath();
+                    context.arc(px, py, r, 0, 2 * Math.PI);
+                    
+                    // Base Color
+                    context.fillStyle = colorScale(d.type);
+                    context.globalAlpha = isHovered ? 1.0 : 0.7; 
+                    context.fill();
+
+                    // Stroke Style (Border)
+                    if (isHovered) {
+                        context.lineWidth = 3;
+                        context.strokeStyle = "#ffffff";
+                        context.stroke();
+                    } else if (isCritical) {
+                        context.lineWidth = 1.5;
+                        context.strokeStyle = "#d32f2f"; 
+                        context.stroke();
+                    } else {
+                        context.lineWidth = 0.5;
+                        context.strokeStyle = "rgba(255,255,255,0.5)";
+                        context.stroke();
+                    }
+                    
+                    context.globalAlpha = 1.0;
                 });
-        }
-
-        // --- STEP 3: HORIZONTAL BAR (Comparing selection) ---
-        function renderHorizontalBar(data, selectedCountries) {
-            const container = document.getElementById("chart-bar");
-            const w = container.clientWidth;
-            const h = 250;
-            const m = {top: 20, right: 40, bottom: 40, left: 120}; 
-
-            const svg = d3.select("#chart-bar").append("svg")
-                .attr("width", w).attr("height", h)
-                .append("g").attr("transform", `translate(${m.left},${m.top})`);
-
-            const width = w - m.left - m.right;
-            const height = h - m.top - m.bottom;
-
-            let barData = [];
-            
-            // Logic: 
-            // 1. If 0 or >1 countries selected: Compare Countries (Top 5)
-            // 2. If 1 country selected: Compare Types or Years
-            
-            if (selectedCountries.length !== 1) {
-                // Multi or All view
-                d3.select("#analyze-title").text("Total Loss Comparison (Top 5)");
-                const rolled = d3.rollup(data, v => d3.sum(v, d => d.loss), d => d.country);
-                barData = Array.from(rolled, ([k, v]) => ({ key: k, value: v }))
-                    .sort((a, b) => b.value - a.value).slice(0, 5);
-            } else {
-                // Single view
-                const country = selectedCountries[0];
-                d3.select("#analyze-title").text(`Loss by Year: ${country}`);
-                const rolled = d3.rollup(data, v => d3.sum(v, d => d.loss), d => d.year);
-                barData = Array.from(rolled, ([k, v]) => ({ key: k.toString(), value: v }))
-                    .sort((a, b) => a.key - b.key);
             }
 
-            const y = d3.scaleBand().range([0, height]).padding(0.3)
-                .domain(barData.map(d => d.key));
-            
-            const x = d3.scaleLinear().range([0, width])
-                .domain([0, d3.max(barData, d => d.value) || 100]);
+            // Initial Draw
+            drawCanvas(null);
 
-            svg.append("g").call(d3.axisLeft(y));
-            svg.append("g").attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".2s")));
+            // --- Interaction ---
+            d3.select(canvas.node()).on("mousemove", function(event) {
+                const [mouseX, mouseY] = d3.pointer(event);
+                let minDist = Infinity;
+                let closest = null;
 
-            svg.append("text").attr("x", width/2).attr("y", height + 35)
-                .text("Total Loss (USD)").attr("text-anchor", "middle").style("font-size", "11px");
+                // Find closest point to mouse
+                topEvents.forEach(d => {
+                    const px = x(d.severity);
+                    const py = y(d.efficiency);
+                    const dist = Math.sqrt((px - mouseX)**2 + (py - mouseY)**2);
+                    // Consider point "hovered" if within its radius + 2px buffer
+                    if (dist < rScale(d.loss) + 2 && dist < minDist) {
+                        minDist = dist;
+                        closest = d;
+                    }
+                });
 
-            svg.selectAll("rect")
-                .data(barData)
-                .enter().append("rect")
-                .attr("y", d => y(d.key))
-                .attr("height", y.bandwidth())
-                .attr("x", 0)
-                .attr("width", d => x(d.value))
-                .attr("fill", "#ffa726")
-                .on("mouseover", (e, d) => showTooltip(e, `Loss: $${d3.format(",")(d.value)}`))
-                .on("mouseout", hideTooltip);
+                // Redraw with highlight
+                drawCanvas(closest);
+
+                // Update Info Panel
+                if (closest) {
+                    d3.select("#scatter-placeholder").style("display", "none");
+                    d3.select("#scatter-details").classed("hidden", false);
+                    d3.select("#d-country").text(closest.country);
+                    d3.select("#d-year").text(closest.year);
+                    d3.select("#d-type").html(`<span style="color:${colorScale(closest.type)}">●</span> ${closest.type}`);
+                    d3.select("#d-sev-eff").text(`${closest.severity} / ${closest.efficiency}`);
+                    d3.select("#d-loss").text(d3.format("$.2s")(closest.loss));
+                } else {
+                    // No point hovered
+                    d3.select("#scatter-details").classed("hidden", true);
+                    d3.select("#scatter-placeholder").style("display", "block");
+                }
+            });
+
+    
+            d3.select(canvas.node()).on("mouseleave", function() {
+                drawCanvas(null);
+                d3.select("#scatter-details").classed("hidden", true);
+                d3.select("#scatter-placeholder").style("display", "block");
+            });
+        }
+        // --- STEP 3: MULTI-METRIC BAR CHARTS (Types for Single Country) ---
+        function renderHorizontalBar(data, selectedCountries) {
+            const container = d3.select("#chart-bar");
+            container.html(""); // Clear content
+
+            // Get dimensions
+            const totalW = document.getElementById("chart-bar").clientWidth;
+            const totalH = document.getElementById("chart-bar").clientHeight || 250;
+
+            // Layout: Flex row (Side-by-side)
+            container
+                .style("display", "flex")
+                .style("flex-direction", "row")
+                .style("justify-content", "space-around")
+                .style("align-items", "center")
+                .style("height", "100%")
+                .style("gap", "5px");
+
+            // Metrics
+            const metrics = [
+                { 
+                    id: "freq", 
+                    title: "Frequency", 
+                    color: "#00897b", // Teal
+                    format: d => d,
+                    getValue: v => v.length 
+                },
+                { 
+                    id: "cas", 
+                    title: "Casualties", 
+                    color: "#e53935", // Red
+                    format: d => d3.format(".2s")(d),
+                    getValue: v => d3.sum(v, d => d.casualties) 
+                },
+                { 
+                    id: "loss", 
+                    title: "Loss ($)", 
+                    color: "#fb8c00", // Orange
+                    format: d => d3.format(".2s")(d),
+                    getValue: v => d3.sum(v, d => d.loss) 
+                }
+            ];
+
+            const chartWidth = (totalW / 3) - 10;
+            const chartHeight = totalH - 10;
+
+            metrics.forEach(metric => {
+                // 1. Data Processing
+                let chartData = [];
+                
+                if (selectedCountries.length !== 1) {
+                    // [Global View] Compare Countries (Top 5)
+                    const rolled = d3.rollup(data, metric.getValue, d => d.country);
+                    chartData = Array.from(rolled, ([key, value]) => ({ key, value }))
+                        .sort((a, b) => b.value - a.value)
+                        .slice(0, 5); 
+                } else {
+                    // [Single Country View] Compare Disaster Types (Top 5) 🔥 修改處
+                    // Change grouping from d.year to d.type
+                    const rolled = d3.rollup(data, metric.getValue, d => d.type);
+                    chartData = Array.from(rolled, ([key, value]) => ({ key: key, value })) // key is now disaster type string
+                        .sort((a, b) => b.value - a.value) // Sort by value desc (Highest impact first)
+                        .slice(0, 5); // Keep Top 5 to prevent overlap
+                }
+
+                // 2. SVG Container
+                const wrapper = container.append("div")
+                    .style("width", `${chartWidth}px`)
+                    .style("height", `${chartHeight}px`)
+                    .style("position", "relative");
+
+                const svg = wrapper.append("svg")
+                    .attr("width", chartWidth)
+                    .attr("height", chartHeight);
+
+                // Margins
+                const m = { top: 25, right: 10, bottom: 30, left: 45 }; 
+                const w = chartWidth - m.left - m.right;
+                const h = chartHeight - m.top - m.bottom;
+
+                const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
+
+                // 3. Scales
+                const x = d3.scaleBand()
+                    .domain(chartData.map(d => d.key))
+                    .range([0, w])
+                    .padding(0.3);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(chartData, d => d.value) || 1])
+                    .range([h, 0]);
+
+                // 4. Title
+                svg.append("text")
+                    .attr("x", chartWidth / 2)
+                    .attr("y", 15)
+                    .text(metric.title)
+                    .attr("fill", metric.color)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "13px")
+                    .style("font-weight", "bold");
+
+                // 5. Axes
+                
+                // X Axis
+                g.append("g")
+                    .attr("transform", `translate(0,${h})`)
+                    .call(d3.axisBottom(x).tickSize(0).tickFormat(d => {
+                        // Auto-truncate logic to prevent overlap
+                        return d.length > 3 ? d.substring(0, 3).toUpperCase() : d;
+                    }))
+                    .selectAll("text")
+                    .style("fill", "#37474f")       // Dark Gray
+                    .style("font-size", "10px")     
+                    .style("font-weight", "bold")   
+                    .style("text-anchor", "middle");
+
+                // Y Axis
+                g.append("g")
+                    .call(d3.axisLeft(y).ticks(4).tickFormat(d3.format(".1s")))
+                    .selectAll("text")
+                    .style("fill", "#37474f")       
+                    .style("font-size", "10px")     
+                    .style("font-weight", "normal");
+                
+                g.select(".domain").remove();
+
+                // 6. Bars
+                g.selectAll("rect")
+                    .data(chartData)
+                    .enter().append("rect")
+                    .attr("x", d => x(d.key))
+                    .attr("y", d => y(d.value))
+                    .attr("width", x.bandwidth())
+                    .attr("height", d => h - y(d.value))
+                    .attr("fill", metric.color)
+                    .attr("rx", 2)
+                    .on("mouseover", function(e, d) {
+                        d3.select(this).attr("opacity", 0.7);
+                        // Tooltip shows full name (e.g., "Earthquake") so user still knows what "EAR" is
+                        showTooltip(e, `<b>${d.key}</b><br>${metric.title}: ${metric.format(d.value)}`);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this).attr("opacity", 1);
+                        hideTooltip();
+                    });
+            });
+
+            // Update Title Logic
+            const titleText = selectedCountries.length === 1 
+                ? `Impact by Type: ${selectedCountries[0]}` 
+                : "Impact Analysis (Top 5 Countries)";
+            d3.select("#analyze-title").text(titleText);
         }
 
         // --- STEP 4: LINE CHART ---
