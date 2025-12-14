@@ -18,7 +18,22 @@ body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main
 }
 .brand h2 { margin: 0; color: #4fc3f7; }
 .control-group label { display: block; margin-bottom: 5px; color: #b0bec5; font-size: 0.9rem; }
+/* Search Box Styles */
+.search-box {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: #263238;
+    border: 1px solid #546e7a;
+    color: #ffffff;
+    border-radius: 4px;
+    box-sizing: border-box; 
+    outline: none;
+}
 
+.search-box:focus {
+    border-color: #4fc3f7; 
+}
 /* Custom Checkbox List Style */
 .checkbox-list {
     max-height: 150px;
@@ -61,18 +76,30 @@ body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main
 /* --- CONTENT --- */
 .dashboard-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 
-.card { background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); padding: 15px; position: relative; }
+.card {
+    height: 100%; 
+    display: flex;
+    flex-direction: column;
+}
+
 .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
 .card-header h3 { margin: 5px 0; font-size: 1.1rem; color: #37474f; }
 .badge { background: #e1f5fe; color: #0277bd; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
 .header-right small { color: #78909c; }
 
-.chart-canvas { width: 100%; min-height: 350px; position: relative; }
+.chart-canvas {
+    flex: 1;
+    width: 100%;
+}
 .chart-canvas.small { min-height: 250px; }
 .no-data { display: flex; justify-content: center; align-items: center; height: 100%; color: #999; font-size: 1.2rem; }
 
 /* Split Row */
-.row-split { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
+.row-split {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr; 
+    gap: 20px;
+}
 
 /* Scatter Layout */
 .scatter-layout { display: flex; gap: 20px; }
