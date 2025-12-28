@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Disaster Response Command Center</title>
     <link rel="stylesheet" href="style.css">
-    
+
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/topojson@3"></script>
     <script src="https://unpkg.com/d3-simple-slider"></script>
@@ -13,25 +14,27 @@
     <style>
         .row-split {
             display: grid;
-            grid-template-columns: 0.8fr 1.2fr; 
+            grid-template-columns: 1.2fr 1fr;
             gap: 20px;
         }
 
         .scatter-layout {
-            display: flex; 
-            flex-direction: column; 
+            display: flex;
+            flex-direction: column;
             height: 100%;
         }
+
         .info-panel {
             margin-top: 10px;
-            flex: 1; 
+            flex: 1;
         }
     </style>
 </head>
+
 <body>
 
     <div class="app-layout">
-        
+
         <aside class="sidebar">
             <div class="brand">
                 <h2>🚨 Risk Command</h2>
@@ -46,9 +49,9 @@
 
             <div class="control-group">
                 <label>🌍 Countries (Multi-select)</label>
-                
+
                 <input type="text" id="country-search" class="search-box" placeholder="🔍 Search country...">
-                
+
                 <div id="country-list" class="checkbox-list"></div>
             </div>
 
@@ -58,7 +61,8 @@
             </div>
 
             <div class="control-group">
-                <label>📅 Time Range: <span id="yearLabel" style="color:#ffb74d; font-weight:bold;">2018-2024</span></label>
+                <label>📅 Time Range: <span id="yearLabel"
+                        style="color:#ffb74d; font-weight:bold;">2018-2024</span></label>
                 <div id="slider-range"></div>
             </div>
 
@@ -77,7 +81,7 @@
         </aside>
 
         <main class="dashboard-content">
-            
+
             <section class="card" id="step1">
                 <div class="card-header">
                     <div class="header-left">
@@ -86,49 +90,61 @@
                     </div>
                     <div class="header-right">
                         <small>Selecting multiple countries highlights them simultaneously.</small>
+                        <div class="legend-container">
+                            <div class="legend-box" style="background:#fee5d9"></div> Low
+                            <div class="legend-box" style="background:#fc9272"></div>
+                            <div class="legend-box" style="background:#fb6a4a"></div>
+                            <div class="legend-box" style="background:#de2d26"></div>
+                            <div class="legend-box" style="background:#a50f15"></div> High
+                        </div>
                     </div>
                 </div>
                 <div id="chart-map" class="chart-canvas"></div>
-                <div class="legend-container">
-                    <div class="legend-box" style="background:#fee5d9"></div> Low
-                    <div class="legend-box" style="background:#fc9272"></div>
-                    <div class="legend-box" style="background:#fb6a4a"></div>
-                    <div class="legend-box" style="background:#de2d26"></div>
-                    <div class="legend-box" style="background:#a50f15"></div> High
-                </div>
+
             </section>
 
             <div class="row-split">
-    
+
                 <section class="card" id="step2">
                     <div class="card-header">
-                        <span class="badge">Step 2: Analyze</span>
+                        <span class="badge">Step 2: Prioritize</span>
                         <h3 id="analyze-title">Impact Analysis</h3>
                     </div>
                     <div id="chart-bar" class="chart-canvas small"></div>
                 </section>
 
+                <section class="card" id="step3a">
+                    <div class="card-header">
+                        <span class="badge">Step 3-1: Analyze</span>
+                        <h3> Aid Distribution by Disaster Type</h3>
+                    </div>
+                    <div id="chart-treemap" class="chart-canvas" style="height:260px;"></div>
+                </section>
+
                 <section class="card" id="step3">
                     <div class="card-header">
-                        <span class="badge">Step 3: Prioritize</span>
+                        <span class="badge">Step 3-2: Analyze</span>
                         <h3>Resource Allocation</h3>
                     </div>
-                    
+
                     <div class="scatter-layout">
                         <div id="chart-scatter" style="flex: 2; min-height: 200px; position: relative;"></div>
-                        
-                        <div class="info-panel">
-                            <h4>Event Details</h4>
-                            <div id="scatter-placeholder" class="placeholder-text">Hover over a point...</div>
-                            <div id="scatter-details" class="hidden">
-                                <div class="detail-row"><span>Country:</span> <strong id="d-country"></strong></div>
-                                <div class="detail-row"><span>Year:</span> <strong id="d-year"></strong></div>
-                                <div class="detail-row"><span>Type:</span> <strong id="d-type"></strong></div>
-                                
-                                <div class="detail-row"><span>Sev / Aid:</span> <strong id="d-sev-aid" style="color:#d32f2f"></strong></div>
-                                
-                                <div class="detail-row"><span>Loss:</span> <strong id="d-loss"></strong></div>
-                            </div>
+                    </div>
+                </section>
+                <section class="card" id="step3-info">
+                    <div class="card-header" style="justify-content: flex-end;">
+                        <h3>Event Details</h3>
+                    </div>
+                    <div class="info-panel">
+                        <div id="scatter-placeholder" class="placeholder-text">
+                            Hover over a point...
+                        </div>
+                        <div id="scatter-details" class="hidden">
+                            <div class="detail-row"><span>Country:</span> <strong id="d-country"></strong></div>
+                            <div class="detail-row"><span>Year:</span> <strong id="d-year"></strong></div>
+                            <div class="detail-row"><span>Type:</span> <strong id="d-type"></strong></div>
+                            <div class="detail-row"><span>Sev / Aid:</span> <strong id="d-sev-aid"></strong></div>
+                            <div class="detail-row"><span>Loss:</span> <strong id="d-loss"></strong></div>
                         </div>
                     </div>
                 </section>
@@ -173,7 +189,7 @@
             d3.csv("data.csv"),
             d3.json("https://unpkg.com/world-atlas@2.0.2/countries-110m.json")
         ]).then(([csv, world]) => {
-            
+
             const parser = d3.timeParse("%Y-%m-%d");
             rawData = csv.map(d => ({
                 date: parser(d.date),
@@ -186,7 +202,7 @@
                 casualties: +d.casualties || 0,
                 time: +d.response_time_hours,
                 loss: +d.economic_loss_usd,
-                aid: +d.aid_amount_usd || 0, 
+                aid: +d.aid_amount_usd || 0,
                 lat: +d.latitude,
                 lng: +d.longitude
             })).filter(d => d.date && !isNaN(d.lat));
@@ -205,7 +221,7 @@
         // --- HELPER: Create Checkboxes with Smart Select All ---
         function initCheckboxList(containerId, items) {
             const container = d3.select(containerId);
-            container.html(""); 
+            container.html("");
 
             // 1. Add "Select All" Option
             const selectAllLabel = container.append("label")
@@ -216,20 +232,20 @@
 
             const selectAllCheckbox = selectAllLabel.append("input")
                 .attr("type", "checkbox")
-                .attr("class", "select-all") 
-                .on("change", function() {
+                .attr("class", "select-all")
+                .on("change", function () {
                     const checked = d3.select(this).property("checked");
-                    
+
                     container.selectAll("label:not([style*='display: none']) input:not(.select-all)")
                         .property("checked", checked);
-                    
-                    updateDashboard(); 
+
+                    updateDashboard();
                 });
-            
+
             selectAllLabel.append("span")
                 .text("Select All")
                 .style("font-weight", "bold")
-                .style("color", "#4fc3f7"); 
+                .style("color", "#4fc3f7");
 
             // 2. Add individual items
             items.forEach(item => {
@@ -237,29 +253,29 @@
                 label.append("input")
                     .attr("type", "checkbox")
                     .attr("value", item)
-                    .on("change", function() {
+                    .on("change", function () {
                         updateDashboard();
-                        
+
                         // Check status logic 
                         const visibleInputs = container.selectAll("label:not([style*='display: none']) input:not(.select-all)");
                         const allCount = visibleInputs.size();
                         const checkedCount = visibleInputs.filter(":checked").size();
-                        
+
                         selectAllCheckbox.property("checked", allCount > 0 && allCount === checkedCount);
                         selectAllCheckbox.property("indeterminate", checkedCount > 0 && checkedCount < allCount);
                     });
-                
+
                 label.append("span").text(item);
             });
         }
 
         // Search Functionality
-        d3.select("#country-search").on("input", function() {
+        d3.select("#country-search").on("input", function () {
             const value = this.value.toLowerCase();
             const container = d3.select("#country-list");
 
             // 1. Select All
-            container.selectAll(".checkbox-item").each(function() {
+            container.selectAll(".checkbox-item").each(function () {
                 const label = d3.select(this);
                 //  Skip "Select All" checkbox
                 if (label.select(".select-all").size() > 0) return;
@@ -280,7 +296,7 @@
         // --- HELPER: Get Selected Values (Exclude Select All) ---
         function getSelectedValues(containerId) {
             const checked = [];
-            d3.selectAll(`${containerId} input[type=checkbox]:checked:not(.select-all)`).each(function() {
+            d3.selectAll(`${containerId} input[type=checkbox]:checked:not(.select-all)`).each(function () {
                 checked.push(this.value);
             });
             return checked;
@@ -313,12 +329,12 @@
             });
 
             d3.select("#kpi-events").text(filtered.length);
-            d3.select("#kpi-loss").text(d3.format("$.2s")(d3.sum(filtered, d => d.loss)).replace("G","B"));
+            d3.select("#kpi-loss").text(d3.format("$.2s")(d3.sum(filtered, d => d.loss)).replace("G", "B"));
 
 
             d3.selectAll(".chart-canvas, #chart-scatter").html("");
 
-            if(filtered.length === 0) {
+            if (filtered.length === 0) {
                 d3.selectAll(".chart-canvas, #chart-scatter")
                     .append("div")
                     .attr("class", "no-data")
@@ -329,19 +345,20 @@
                     .style("color", "#cfd8dc")
                     .style("font-weight", "bold")
                     .text("No Data Found");
-                return; 
+                return;
             }
 
             renderChoroplethMap(filtered, selCountries);
-            renderHorizontalBar(filtered, selCountries); 
-            renderScatter(filtered); 
+            renderHorizontalBar(filtered, selCountries);
+            renderTreemap(filtered);
+            renderScatter(filtered);
             renderTrendLine(filtered);
         }
 
         // --- STEP 1: MAP (Log Color Scale, Smaller Dots, Richer Tooltip) ---
         function renderChoroplethMap(data, selectedCountries) {
             const container = document.getElementById("chart-map");
-            d3.select("#chart-map").html(""); 
+            d3.select("#chart-map").html("");
 
             const w = container.clientWidth;
             const h = 400;
@@ -350,20 +367,20 @@
                 .attr("width", w).attr("height", h)
                 .style("background", "#1e293b");
 
-            const projection = d3.geoMercator().translate([w/2, h/1.5]);
+            const projection = d3.geoMercator().translate([w / 2, h / 1.5]);
             const path = d3.geoPath().projection(projection);
-            
+
             const countries = topojson.feature(worldData, worldData.objects.countries).features;
-            
+
 
             const counts = d3.rollup(data, v => v.length, d => d.mapName);
             const maxCount = d3.max(Array.from(counts.values())) || 1;
 
             const colorScale = d3.scaleSequentialLog(d3.interpolateYlOrRd)
-                .domain([1, maxCount]); 
-            
+                .domain([1, maxCount]);
+
             const g = svg.append("g");
-            
+
             // 1. plot countries
             g.selectAll("path")
                 .data(countries)
@@ -371,16 +388,16 @@
                 .attr("d", path)
                 .attr("fill", d => {
                     const val = counts.get(d.properties.name);
-                    if (selectedCountries.length === 1 && 
-                    (nameMapping[selectedCountries[0]] === d.properties.name || selectedCountries[0] === d.properties.name)) {
+                    if (selectedCountries.length === 1 &&
+                        (nameMapping[selectedCountries[0]] === d.properties.name || selectedCountries[0] === d.properties.name)) {
                         return "#263238"; // custom highlight color
                     }
                     // if no data, use default gray
-                    return (val && val > 0) ? colorScale(val) : "#37474f"; 
+                    return (val && val > 0) ? colorScale(val) : "#37474f";
                 })
-                .attr("stroke", d => { 
+                .attr("stroke", d => {
                     const csvName = Object.keys(nameMapping).find(key => nameMapping[key] === d.properties.name) || d.properties.name;
-                    return (selectedCountries.includes(csvName)) ? "#00e5ff" : "#546e7a"; 
+                    return (selectedCountries.includes(csvName)) ? "#00e5ff" : "#546e7a";
                 })
                 .attr("stroke-width", d => {
                     const csvName = Object.keys(nameMapping).find(key => nameMapping[key] === d.properties.name) || d.properties.name;
@@ -395,12 +412,12 @@
                     d3.selectAll(`#country-list input[value='${csvName}']`).property("checked", true);
                     updateDashboard();
                 })
-                .on("mouseover", function(e, d) {
+                .on("mouseover", function (e, d) {
                     const val = counts.get(d.properties.name) || 0;
                     d3.select(this).style("opacity", 0.7);
                     showTooltip(e, `<b>${d.properties.name}</b><br>Total Events: ${val}`);
                 })
-                .on("mouseout", function() {
+                .on("mouseout", function () {
                     d3.select(this).style("opacity", 1);
                     hideTooltip();
                 });
@@ -412,7 +429,7 @@
                     return selectedCountries.includes(csvName);
                 });
 
-                if(selectedFeatures.length > 0) {
+                if (selectedFeatures.length > 0) {
                     const bounds = path.bounds(selectedFeatures[0]);
                     const dx = bounds[1][0] - bounds[0][0];
                     const dy = bounds[1][1] - bounds[0][1];
@@ -424,7 +441,7 @@
                     g.transition().duration(750)
                         .attr("transform", `translate(${translate})scale(${scale})`)
                         .on("end", () => drawCityClusters(scale, selectedFeatures[0]));
-                    
+
                     drawCityClusters(scale, selectedFeatures[0]);
                 }
             } else {
@@ -433,23 +450,23 @@
 
             // --- inner function: draw city clusters ---
             function drawCityClusters(scale, geoFeature) {
-                const cityGroups = d3.rollup(data, 
+                const cityGroups = d3.rollup(data,
                     v => {
                         // find the most common type in this cluster
                         const typeCounts = d3.rollup(v, c => c.length, d => d.type);
                         //  sort and get the top one
                         const mainType = Array.from(typeCounts).sort((a, b) => b[1] - a[1])[0][0];
-                        
+
                         return {
                             count: v.length,
                             lat: v[0].lat,
                             lng: v[0].lng,
                             loss: d3.sum(v, d => d.loss),
                             avgSeverity: d3.mean(v, d => d.severity),
-                            mainType: mainType 
+                            mainType: mainType
                         };
                     },
-                    d => `${d.lat.toFixed(1)},${d.lng.toFixed(1)}` 
+                    d => `${d.lat.toFixed(1)},${d.lng.toFixed(1)}`
                 );
 
                 let cityData = Array.from(cityGroups.values());
@@ -460,7 +477,7 @@
 
                 const rScale = d3.scaleSqrt()
                     .domain([0, d3.max(cityData, d => d.count) || 1])
-                    .range([1.5, 6]); 
+                    .range([1.5, 6]);
 
 
                 const cityColorScale = d3.scaleSequentialLog(d3.interpolateYlOrRd)
@@ -474,17 +491,17 @@
                     .attr("class", "city-dot")
                     .attr("cx", d => projection([d.lng, d.lat])[0])
                     .attr("cy", d => projection([d.lng, d.lat])[1])
-                    .attr("r", d => rScale(d.count) / Math.sqrt(scale)) 
+                    .attr("r", d => rScale(d.count) / Math.sqrt(scale))
                     .attr("fill", d => cityColorScale(d.count || 1))
-                    .attr("stroke", "#ffeb3b") 
-                    .attr("stroke-width", 1 / scale) 
+                    .attr("stroke", "#ffeb3b")
+                    .attr("stroke-width", 1 / scale)
                     .attr("opacity", 0.9)
-                    .on("mouseover", function(e, d) {
+                    .on("mouseover", function (e, d) {
                         d3.select(this)
                             .attr("stroke", "#ffffff")
                             .attr("stroke-width", 2.5 / scale)
-                            .attr("r", rScale(d.count) / Math.sqrt(scale) * 1.8); 
-                        
+                            .attr("r", rScale(d.count) / Math.sqrt(scale) * 1.8);
+
 
                         let tooltipHtml = `<b>Location Cluster</b><br>`;
                         tooltipHtml += `Events: <b>${d.count}</b><br>`;
@@ -495,7 +512,7 @@
 
                         showTooltip(e, tooltipHtml);
                     })
-                    .on("mouseout", function(e, d) {
+                    .on("mouseout", function (e, d) {
                         d3.select(this)
                             .attr("stroke", "#ffeb3b")
                             .attr("stroke-width", 1 / scale)
@@ -509,7 +526,7 @@
         // --- STEP 2: BAR CHART (Linked Highlighting) ---
         function renderHorizontalBar(data, selectedCountries) {
             const container = d3.select("#chart-bar");
-            container.html(""); 
+            container.html("");
             const totalW = document.getElementById("chart-bar").clientWidth;
             const totalH = document.getElementById("chart-bar").clientHeight || 250;
 
@@ -530,7 +547,7 @@
                 let chartData = [];
                 if (selectedCountries.length !== 1) {
                     const rolled = d3.rollup(data, metric.getValue, d => d.country);
-                    chartData = Array.from(rolled, ([key, value]) => ({ key, value })).sort((a, b) => b.value - a.value).slice(0, 5); 
+                    chartData = Array.from(rolled, ([key, value]) => ({ key, value })).sort((a, b) => b.value - a.value).slice(0, 5);
                 } else {
                     const rolled = d3.rollup(data, metric.getValue, d => d.type);
                     chartData = Array.from(rolled, ([key, value]) => ({ key: key, value })).sort((a, b) => b.value - a.value).slice(0, 5);
@@ -538,7 +555,7 @@
 
                 const wrapper = container.append("div").style("width", `${chartWidth}px`).style("height", `${chartHeight}px`).style("position", "relative");
                 const svg = wrapper.append("svg").attr("width", chartWidth).attr("height", chartHeight);
-                const m = { top: 25, right: 10, bottom: 30, left: 45 }; 
+                const m = { top: 25, right: 10, bottom: 30, left: 45 };
                 const w = chartWidth - m.left - m.right; const h = chartHeight - m.top - m.bottom;
                 const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
 
@@ -557,27 +574,174 @@
                     .attr("x", d => x(d.key)).attr("y", d => y(d.value))
                     .attr("width", x.bandwidth()).attr("height", d => h - y(d.value))
                     .attr("fill", metric.color).attr("rx", 2)
-                    .attr("class", d => `metric-bar bar-${toSafeID(d.key)}`) 
-                    .on("mouseover", function(e, d) { 
-                        showTooltip(e, `<b>${d.key}</b><br>${metric.title}: ${metric.format(d.value)}`); 
-                        
+                    .attr("class", d => `metric-bar bar-${toSafeID(d.key)}`)
+                    .on("mouseover", function (e, d) {
+                        showTooltip(e, `<b>${d.key}</b><br>${metric.title}: ${metric.format(d.value)}`);
+
                         d3.selectAll(".metric-bar").style("opacity", 0.2);
                         d3.selectAll(`.bar-${toSafeID(d.key)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 1);
                     })
-                    .on("mouseout", function() { 
-                        hideTooltip(); 
+                    .on("mouseout", function () {
+                        hideTooltip();
                         d3.selectAll(".metric-bar").style("opacity", 1).style("stroke", "none");
                     });
             });
             d3.select("#analyze-title").text(selectedCountries.length === 1 ? `Impact by Type: ${selectedCountries[0]}` : "Impact Analysis (Top 5 Countries)");
         }
+        // --- STEP 3-1: TREEMAP (Aid distributed across disaster types) ---
+        function renderTreemap(data) {
+            function wrapText(textSelection, maxWidth) {
+                textSelection.each(function () {
+                    const text = d3.select(this);
+                    const words = text.text().split(/\s+/).reverse();
+                    let word;
+                    let line = [];
+                    let lineNumber = 0;
 
-        // --- STEP 3: SCATTER PLOT (Aid vs Severity) ---
+                    const lineHeight = 1.2; // em
+                    const y = text.attr("y");
+                    const x = text.attr("x");
+
+                    let tspan = text.text(null)
+                        .append("tspan")
+                        .attr("x", x)
+                        .attr("y", y);
+
+                    while (word = words.pop()) {
+                        line.push(word);
+                        tspan.text(line.join(" "));
+
+                        if (tspan.node().getComputedTextLength() > maxWidth) {
+                            line.pop();
+                            tspan.text(line.join(" "));
+                            line = [word];
+                            tspan = text.append("tspan")
+                                .attr("x", x)
+                                .attr("dy", `${lineHeight}em`)
+                                .text(word);
+                        }
+                    }
+                });
+            }
+
+            const container = document.getElementById("chart-treemap");
+            d3.select("#chart-treemap").html("");
+
+            const w = container.clientWidth;
+            const h = container.clientHeight || 260;
+
+            const svg = d3.select("#chart-treemap")
+                .append("svg")
+                .attr("width", w)
+                .attr("height", h);
+
+            // --- aggregate aid by disaster type ---
+            const aidByType = d3.rollups(
+                data,
+                v => d3.sum(v, d => d.aid),
+                d => d.type
+            );
+
+            const treemapData = {
+                name: "Aid",
+                children: aidByType.map(([type, value]) => ({
+                    name: type,
+                    value: value
+                }))
+            };
+
+            const root = d3.hierarchy(treemapData)
+                .sum(d => d.value)
+                .sort((a, b) => b.value - a.value);
+
+            d3.treemap()
+                .size([w, h])
+                .padding(2)(root);
+
+            const maxAid = d3.max(root.leaves(), d => d.value) || 1;
+
+            const color = d3.scaleSequential(d3.interpolateYlOrRd)
+                .domain([0, maxAid])
+                .clamp(true);
+
+            const nodes = svg.selectAll("g")
+                .data(root.leaves())
+                .enter()
+                .append("g")
+                .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+            nodes.append("rect")
+                .attr("width", d => d.x1 - d.x0)
+                .attr("height", d => d.y1 - d.y0)
+                .attr("rx", 3)
+                .attr("fill", d => color(d.value))
+                .on("mouseover", (e, d) => {
+                    d3.select(e.currentTarget)
+                        .attr("stroke", "#000")
+                        .attr("stroke-width", 1.5);
+
+                    const total = d3.sum(root.leaves(), n => n.value);
+                    const percent = ((d.value / total) * 100).toFixed(1);
+
+                    showTooltip(
+                        e,
+                        `<b>${d.data.name}</b><br>
+                 Aid: <b>${d3.format("$.2s")(d.value)}</b><br>
+                 Share: <b>${percent}%</b>`
+                    );
+
+                    // linked highlight (Step 2 bar chart)
+                    const typeClass = toSafeID(d.data.name);
+
+                    // fade all bars
+                    d3.selectAll(".metric-bar")
+                        .style("opacity", 0.2)
+                        .style("stroke", "none");
+
+                    // highlight matched bars
+                    d3.selectAll(`.bar-${typeClass}`)
+                        .style("opacity", 1)
+                        .style("stroke", "#000")
+                        .style("stroke-width", 2);
+                })
+                .on("mouseout", function () {
+                    d3.select(this).attr("stroke", null);
+                    hideTooltip();
+
+                    // --- restore bar chart ---
+                    d3.selectAll(".metric-bar")
+                        .style("opacity", 1)
+                        .style("stroke", "none");
+                });
+
+            const LABEL_FONT_SIZE = 14;
+            const LABEL_PADDING = 6;
+
+            const labels = nodes.append("text")
+                .attr("x", LABEL_PADDING)
+                .attr("y", LABEL_FONT_SIZE + LABEL_PADDING)
+                .text(d => d.data.name)
+                .style("font-size", "14px")
+                .style("font-weight", "600")
+                .style("fill", "#ffffff")
+                .style("pointer-events", "none")
+                .style("display", d => {
+                    const w = d.x1 - d.x0;
+                    const h = d.y1 - d.y0;
+                    return (w > 60 && h > 30) ? "block" : "none";
+                });
+            labels.each(function (d) {
+                const w = d.x1 - d.x0;
+                wrapText(d3.select(this), w - LABEL_PADDING * 2);
+            });
+
+        }
+        // --- STEP 3-2: SCATTER PLOT (Aid vs Severity) ---
         function renderScatter(data) {
             const container = document.getElementById("chart-scatter");
-            d3.select("#chart-scatter").html(""); 
+            d3.select("#chart-scatter").html("");
             const w = container.clientWidth; const h = container.clientHeight || 250;
-            const m = {top: 20, right: 20, bottom: 40, left: 60}; 
+            const m = { top: 20, right: 20, bottom: 40, left: 60 };
             const width = w - m.left - m.right; const height = h - m.top - m.bottom;
 
             const topEvents = [...data].sort((a, b) => b.loss - a.loss).slice(0, 2000);
@@ -592,14 +756,14 @@
 
             const x = d3.scaleLinear().domain([0, 10]).range([0, width]);
             const y = d3.scaleLinear().domain([0, d3.max(topEvents, d => d.aid) || 100000]).range([height, 0]).nice();
-            const rScale = d3.scaleSqrt().domain([0, d3.max(topEvents, d => d.loss) || 1e9]).range([3, 18]); 
+            const rScale = d3.scaleSqrt().domain([0, d3.max(topEvents, d => d.loss) || 1e9]).range([3, 18]);
             const colorScale = d3.scaleOrdinal().domain(["Earthquake", "Flood", "Storm", "Wildfire", "Drought", "Volcano"]).range(["#7986cb", "#4fc3f7", "#9ccc65", "#ff8a65", "#ba68c8", "#90a4ae"]);
 
             svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
             svg.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d3.format("$.2s")));
 
-            svg.append("text").attr("x", width/2).attr("y", height+30).text("Severity Index").style("font-size","11px").attr("fill", "#546e7a").attr("text-anchor", "middle");
-            svg.append("text").attr("transform","rotate(-90)").attr("y", -45).attr("x", -height/2).text("Aid Amount (USD)").style("font-size","11px").attr("fill", "#546e7a").attr("text-anchor", "middle");
+            svg.append("text").attr("x", width / 2).attr("y", height + 30).text("Severity Index").style("font-size", "11px").attr("fill", "#546e7a").attr("text-anchor", "middle");
+            svg.append("text").attr("transform", "rotate(-90)").attr("y", -45).attr("x", -height / 2).text("Aid Amount (USD)").style("font-size", "11px").attr("fill", "#546e7a").attr("text-anchor", "middle");
 
             svg.append("text").attr("x", 10).attr("y", 0).text(`Showing Top ${topEvents.length} Major Events`).style("font-size", "10px").style("fill", "#0288d1").style("font-weight", "bold");
 
@@ -617,15 +781,15 @@
             }
             drawCanvas(null);
 
-            d3.select(canvas.node()).on("mousemove", function(event) {
+            d3.select(canvas.node()).on("mousemove", function (event) {
                 const [mouseX, mouseY] = d3.pointer(event);
                 let minDist = Infinity; let closest = null;
                 topEvents.forEach(d => {
                     const px = x(d.severity); const py = y(d.aid);
-                    const dist = Math.sqrt((px - mouseX)**2 + (py - mouseY)**2);
+                    const dist = Math.sqrt((px - mouseX) ** 2 + (py - mouseY) ** 2);
                     if (dist < rScale(d.loss) + 4 && dist < minDist) { minDist = dist; closest = d; }
                 });
-                
+
                 drawCanvas(closest);
 
                 if (closest) {
@@ -634,12 +798,12 @@
                     d3.select("#d-country").text(closest.country);
                     d3.select("#d-year").text(closest.year);
                     d3.select("#d-type").html(`<span style="color:${colorScale(closest.type)}">●</span> ${closest.type}`);
-                    
+
                     d3.select("#d-sev-aid").html(`Severity: <b>${closest.severity}</b> <br> Aid: <b style="color:#2e7d32">${d3.format("$.2s")(closest.aid)}</b>`);
-                    
+
                     d3.select("#d-loss").text(d3.format("$.2s")(closest.loss));
 
-                    d3.selectAll(".metric-bar").style("opacity", 0.2); 
+                    d3.selectAll(".metric-bar").style("opacity", 0.2);
                     d3.selectAll(`.bar-${toSafeID(closest.type)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 2);
                     d3.selectAll(`.bar-${toSafeID(closest.country)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 2);
 
@@ -648,9 +812,9 @@
                     d3.select("#scatter-placeholder").style("display", "block");
                     d3.selectAll(".metric-bar").style("opacity", 1).style("stroke", "none");
                 }
-            }).on("mouseleave", function() { 
-                drawCanvas(null); 
-                d3.select("#scatter-details").classed("hidden", true); 
+            }).on("mouseleave", function () {
+                drawCanvas(null);
+                d3.select("#scatter-details").classed("hidden", true);
                 d3.select("#scatter-placeholder").style("display", "block");
                 d3.selectAll(".metric-bar").style("opacity", 1).style("stroke", "none");
             });
@@ -659,7 +823,7 @@
         // --- STEP 4: LINE CHART ---
         function renderTrendLine(data) {
             const container = document.getElementById("chart-line");
-            const w = container.clientWidth; const h = 250; const m = {top:20, right:30, bottom:40, left:60};
+            const w = container.clientWidth; const h = 250; const m = { top: 20, right: 30, bottom: 40, left: 60 };
             d3.select("#chart-line").html("");
             const svg = d3.select("#chart-line").append("svg").attr("width", w).attr("height", h).append("g").attr("transform", `translate(${m.left},${m.top})`);
             const width = w - m.left - m.right; const height = h - m.top - m.bottom;
@@ -667,15 +831,15 @@
             const rolled = d3.rollup(data, v => d3.mean(v, d => d.time), d => d.year);
             const lineData = Array.from(rolled, ([year, val]) => ({ year, val })).sort((a, b) => a.year - b.year);
 
-            if(lineData.length < 2) { svg.append("text").attr("x", width/2).attr("y", height/2).text("Not enough data").attr("text-anchor","middle"); return; }
+            if (lineData.length < 2) { svg.append("text").attr("x", width / 2).attr("y", height / 2).text("Not enough data").attr("text-anchor", "middle"); return; }
 
             const x = d3.scaleLinear().domain(d3.extent(lineData, d => d.year)).range([0, width]);
-            const y = d3.scaleLinear().domain([0, d3.max(lineData, d => d.val)*1.2]).range([height, 0]);
+            const y = d3.scaleLinear().domain([0, d3.max(lineData, d => d.val) * 1.2]).range([height, 0]);
 
             svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
             svg.append("g").call(d3.axisLeft(y));
-            svg.append("text").attr("x", width/2).attr("y", height+35).text("Year").attr("text-anchor", "middle").style("font-size", "11px");
-            svg.append("text").attr("transform", "rotate(-90)").attr("y", -35).attr("x", -height/2).text("Avg Time (Hrs)").attr("text-anchor", "middle").style("font-size", "11px");
+            svg.append("text").attr("x", width / 2).attr("y", height + 35).text("Year").attr("text-anchor", "middle").style("font-size", "11px");
+            svg.append("text").attr("transform", "rotate(-90)").attr("y", -35).attr("x", -height / 2).text("Avg Time (Hrs)").attr("text-anchor", "middle").style("font-size", "11px");
 
             const line = d3.line().x(d => x(d.year)).y(d => y(d.val));
             svg.append("path").datum(lineData).attr("fill", "none").attr("stroke", "#66bb6a").attr("stroke-width", 3).attr("d", line);
@@ -684,8 +848,37 @@
         }
 
         const tooltip = d3.select("#tooltip");
-        function showTooltip(e, html) { tooltip.classed("hidden", false).html(html).style("left", (e.pageX+10)+"px").style("top", (e.pageY-20)+"px"); }
+        function showTooltip(e, html) {
+            tooltip
+                .classed("hidden", false)
+                .html(html);
+
+            const tooltipNode = tooltip.node();
+            const tooltipWidth = tooltipNode.offsetWidth;
+            const tooltipHeight = tooltipNode.offsetHeight;
+
+            const padding = 12;
+
+            const pageWidth = window.innerWidth;
+            const pageHeight = window.innerHeight;
+
+            let x = e.pageX + padding;
+            let y = e.pageY + padding;
+
+            if (x + tooltipWidth > pageWidth) {
+                x = e.pageX - tooltipWidth - padding;
+            }
+
+            if (y + tooltipHeight > pageHeight) {
+                y = e.pageY - tooltipHeight - padding;
+            }
+
+            tooltip
+                .style("left", x + "px")
+                .style("top", y + "px");
+        }
         function hideTooltip() { tooltip.classed("hidden", true); }
     </script>
 </body>
+
 </html>
