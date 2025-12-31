@@ -238,13 +238,15 @@ body {
 /* Map controls overlay */
 #chart-map { position: relative; }
 .map-controls {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    z-index: 20;
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
 }
 .map-btn {
     background: #263238;
@@ -254,6 +256,12 @@ body {
     border-radius: 4px;
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    box-sizing: border-box;
 }
 .map-btn:hover { background: #455a64; }
 .map-btn.back-btn { display: none; background: #0288d1; }
