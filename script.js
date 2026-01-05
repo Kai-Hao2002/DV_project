@@ -240,7 +240,7 @@ function renderChoroplethMap(data, selectedCountries) {
 
 	// pan controls
 	const panGrid = controls.append("div").attr("class", "pan-grid");
-	panGrid.append("button").attr("class", "map-btn pan up").text("↑").on("click", () => panBy(0,  -60));
+	panGrid.append("button").attr("class", "map-btn pan up").text("↑").on("click", () => panBy(0, -60));
 	const middleRow = panGrid.append("div").attr("class", "pan-mid");
 	middleRow.append("button").attr("class", "map-btn pan left").text("←").on("click", () => panBy(-80, 0));
 	middleRow.append("button").attr("class", "map-btn pan right").text("→").on("click", () => panBy(80, 0));
@@ -570,14 +570,14 @@ function renderHorizontalBar(data, selectedCountries) {
 				showTooltip(e, `<b>${d.key}</b><br>${metric.title}: ${metric.format(d.value)}`);
 
 				d3.selectAll(".metric-bar").style("opacity", 0.2);
-				d3.selectAll(`.bar-${toSafeID(d.key)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 1);
+				d3.selectAll(`.bar-${toSafeID(d.key)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 1.5);
 			})
 			.on("mouseout", function () {
 				hideTooltip();
 				d3.selectAll(".metric-bar").style("opacity", 1).style("stroke", "none");
 			});
 	});
-	d3.select("#analyze-title").text(selectedCountries.length === 1 ? `Impact by Type: ${selectedCountries[0]}` : "Impact Analysis (Top 5 Countries)");
+	d3.select("#analyze-title").text(selectedCountries.length === 1 ? `Impact Prioritization by Type - ${selectedCountries[0]}` : "Impact Analysis (Top 5 Countries)");
 }
 // --- STEP 3-1: TREEMAP (Aid distributed across disaster types) ---
 function renderTreemap(data) {
@@ -693,7 +693,7 @@ function renderTreemap(data) {
 			d3.selectAll(`.bar-${typeClass}`)
 				.style("opacity", 1)
 				.style("stroke", "#000")
-				.style("stroke-width", 2);
+				.style("stroke-width", 1.5);
 		})
 		.on("mouseout", function () {
 			d3.select(this).attr("stroke", null);
@@ -795,8 +795,8 @@ function renderScatter(data) {
 			d3.select("#d-loss").text(d3.format("$.2s")(closest.loss));
 
 			d3.selectAll(".metric-bar").style("opacity", 0.2);
-			d3.selectAll(`.bar-${toSafeID(closest.type)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 2);
-			d3.selectAll(`.bar-${toSafeID(closest.country)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 2);
+			d3.selectAll(`.bar-${toSafeID(closest.type)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 1.5);
+			d3.selectAll(`.bar-${toSafeID(closest.country)}`).style("opacity", 1).style("stroke", "#333").style("stroke-width", 1.5);
 
 		} else {
 			d3.select("#scatter-details").classed("hidden", true);
