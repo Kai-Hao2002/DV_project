@@ -1,0 +1,171 @@
+%%
+% This is an Overleaf template for scientific articles and reports
+% using the TUM Corporate Desing https://www.tum.de/cd
+%
+% For further details on how to use the template, take a look at our
+% GitLab repository and browse through our test documents
+% https://gitlab.lrz.de/latex4ei/tum-templates.
+%
+% The tumarticle class is based on the KOMA-Script class scrartcl.
+% If you need further customization please consult the KOMA-Script guide
+% https://ctan.org/pkg/koma-script.
+% Additional class options are passed down to the base class.
+%
+% If you encounter any bugs or undesired behaviour, please raise an issue
+% in our GitLab repository
+% https://gitlab.lrz.de/latex4ei/tum-templates/issues
+% and provide a description and minimal working example of your problem.
+%%
+
+
+\documentclass[
+  english,        % define the document language (english, german)
+  font=times,     % define main text font (helvet, times, palatino, libertine)
+  twocolumn,      % use onecolumn or twocolumn layout
+]{tumarticle}
+
+
+% load additional packages
+\usepackage{cite}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,      
+    urlcolor=blue,
+    citecolor=blue,
+}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{lineno}
+\usepackage{lipsum}
+
+\linenumbers
+% article metadata
+\title{Title of Report}
+% \subtitle{Subtitle of the article}
+
+\author
+% [affil=1, orcid=1111-222-33333, email=first.author@tum.de]
+{Author Name}
+\author{Author Name}
+% \author[affil=1]{Last Author}
+
+% \affil[mark=1]{\theDepartmentName, \theUniversityName}
+% \affil[mark=2]{Another affiliation}
+
+\date{\today}
+
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  This is a short abstract summarizing the main points of your report.
+\end{abstract}
+
+
+\section{Introduction}
+
+% \lipsum[3-20]
+
+This template should serve as a starting point to detail your report. I expect 3-4 pages per student, i.e., students working alone should hand in a 3-4 page report and student teams 6-8 pages.
+You do not need to stick to this exact format, but this can help you structure the report.
+
+In this introduction section, you should introduce the problem, some general technical terms (e.g. a graph, a drawing, matrix, etc.)
+and outline the rest of the report. A reader should have a basic idea of your visualizaiton, and a fellow visualization course student should understand the topic at a high level.
+
+
+You should make use of various \LaTeX commands to cite sources, include figures and tables, and reference things like sections, equations, etc.
+Below are some examples you might find useful (see the source code if you are reading the compiled pdf).
+
+When you refer to a article/paper/document, you should include its bibtex entry in references.bib. Then, you can reference it like this~\cite{example}. 
+
+
+
+\section{Data abstraction}
+
+Explain where you got your dataset from, its background and context, and then discuss your data abstraction. Someone who gets your data should be able to reproduce the steps.
+
+\section{Task abstraction}
+
+Clearly state what tasks you expect a user to perform with your visualization. Also explain how they relate to the domain situation.
+
+\section{Technical description}
+
+Describe your the different views of your visualization, how you encoded the data, and argue why this is an appropriate encoding.
+
+\subsection{Views}
+
+Description of views.
+
+\subsection{Visual encoding}
+
+Description of visual encoding.
+
+\subsection{Interactivity}
+
+What interactivity is possible in your visualization.
+
+\section{Evaluation}
+
+Argue why your design is a good design.
+
+\subsection{Case Study}
+
+Walk the reader through an example that explains how a user would use your system. 
+
+\section{Conclusion}
+
+End your report with a short conclusion.
+
+
+\section{Helpful Latex Commands and Tipps}
+
+You can include figures like this: 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.49\linewidth]{figs/sierpinski3d.pdf}
+    \caption{Caption}
+    \label{fig:example-label}
+\end{figure}
+
+And refer to them like this: \autoref{fig:example-label} or by Fig.~\ref{fig:example-label}.
+
+Make use of additional sections and subsections to organize the document. Detail should be at the level that a 
+professional could re-implement the technique from your description, without access to the code.
+Pseudocode example is included below. 
+
+\begin{algorithm}
+  \caption{An algorithm with caption}\label{alg:cap}
+  \begin{algorithmic}
+  \Procedure{isEven}{$x$}
+    \If{$x\mod 2$ is $0$}
+        \Return True
+    \ElsIf{$x\mod 2$ is $1$}
+        \Return False 
+    \EndIf
+  \EndProcedure
+  \end{algorithmic}
+  \end{algorithm}
+
+
+You likely want to format results in tables. Accompanying writeup should include discussion of results. 
+
+\begin{table}
+  \centering
+  \caption{A table with a caption.}
+  \begin{tabular}{ c c c }
+  \hline
+   cell1 & cell2 & cell3 \\ \hline
+   cell4 & cell5 & cell6 \\  \hline
+   cell7 & cell8 & cell9  \\  \hline
+  \end{tabular}
+  \label{tab:tab1}  
+\end{table}
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
